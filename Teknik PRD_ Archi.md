@@ -280,5 +280,3 @@ Bir story'nin tamamlanmış sayılması için:
 5. Kod review tamamlandı ve merge edildi.
 
 ---
-
-*Bu doküman yaşayan bir belgedir. Sprint geçişlerinde TPO tarafından güncellenir.*
