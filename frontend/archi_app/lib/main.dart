@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'services/auth_api.dart';
+import 'core/theme/app_colors.dart';
+import 'core/theme/app_theme.dart';
+import 'features/auth/presentation/auth_screen.dart';
+import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'features/profile/presentation/profile_screen.dart';
 import 'services/session_storage.dart';
-
-const apiBaseUrl = 'http://localhost:5161';
 
 void main() => runApp(const ArchiApp());
 
@@ -15,10 +17,7 @@ class ArchiApp extends StatelessWidget {
     return MaterialApp(
       title: 'Archi',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5B3FA8)),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.dark,
       home: const SessionBootstrapScreen(),
     );
   }
@@ -33,7 +32,6 @@ class SessionBootstrapScreen extends StatefulWidget {
 
 class _SessionBootstrapScreenState extends State<SessionBootstrapScreen> {
   final _sessionStorage = SessionStorage();
-
   bool _isLoading = true;
   String? _token;
 
@@ -61,22 +59,9 @@ class _SessionBootstrapScreenState extends State<SessionBootstrapScreen> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-
     if (_token != null && _token!.isNotEmpty) {
-      return HomeScreen(
-        token: _token!,
-        onLogout: () async {
-          await _sessionStorage.clearToken();
-          if (!mounted) {
-            return;
-          }
-          setState(() {
-            _token = null;
-          });
-        },
-      );
+      return const AppShell();
     }
-
     return AuthScreen(
       onAuthenticated: (token) {
         setState(() {
@@ -87,296 +72,48 @@ class _SessionBootstrapScreenState extends State<SessionBootstrapScreen> {
   }
 }
 
-class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, required this.onAuthenticated});
-
-  final ValueChanged<String> onAuthenticated;
+class AppShell extends StatefulWidget {
+  const AppShell({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  State<AppShell> createState() => _AppShellState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _authApi = AuthApi(baseUrl: apiBaseUrl);
-  final _sessionStorage = SessionStorage();
+class _AppShellState extends State<AppShell> {
+  int _currentIndex = 0;
 
-  bool _isLoading = false;
-  String? _message;
-  bool _isLoginMode = false;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _message = null;
-    });
-
-    try {
-      final token = _isLoginMode
-          ? await _authApi.login(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-            )
-          : await _authApi.register(
-              email: _emailController.text.trim(),
-              username: _usernameController.text.trim(),
-              password: _passwordController.text,
-            );
-      await _sessionStorage.saveToken(token);
-      final tokenPreview = token.length > 16 ? '${token.substring(0, 16)}...' : token;
-      setState(() {
-        _message = _isLoginMode
-            ? 'Giris basarili. Token: $tokenPreview'
-            : 'Kayit basarili. Token: $tokenPreview';
-      });
-      widget.onAuthenticated(token);
-    } catch (error) {
-      setState(() {
-        _message = 'Hata: $error';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
+  static const _pages = <Widget>[
+    DashboardScreen(),
+    ProfileScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isLoginMode ? 'Archi Giris' : 'Archi Kayit')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'E-posta'),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || !value.contains('@')) {
-                    return 'Gecerli bir e-posta girin.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              if (!_isLoginMode) ...[
-                TextFormField(
-                  controller: _usernameController,
-                  decoration: const InputDecoration(labelText: 'Kullanici adi'),
-                  validator: (value) {
-                    if (value == null || value.trim().length < 3) {
-                      return 'En az 3 karakter olmali.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-              ],
-              TextFormField(
-                controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Sifre'),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.length < 8) {
-                    return 'Sifre en az 8 karakter olmali.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: _isLoading ? null : _submit,
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(_isLoginMode ? 'Giris Yap' : 'Kayit Ol'),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: _isLoading
-                    ? null
-                    : () {
-                        setState(() {
-                          _isLoginMode = !_isLoginMode;
-                          _message = null;
-                        });
-                      },
-                child: Text(
-                  _isLoginMode
-                      ? 'Hesabin yok mu? Kayit ol'
-                      : 'Zaten hesabin var mi? Giris yap',
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (_message != null)
-                SelectableText.rich(
-                  TextSpan(
-                    text: _message!,
-                    style: TextStyle(
-                      color: _message!.startsWith('Hata')
-                          ? Colors.red
-                          : Colors.green,
-                    ),
-                  ),
-                ),
-            ],
+      body: _pages[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (value) {
+          setState(() {
+            _currentIndex = value;
+          });
+        },
+        backgroundColor: AppColors.surfaceElevated,
+        selectedItemColor: AppColors.primarySoft,
+        unselectedItemColor: AppColors.textMuted,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.explore_outlined),
+            activeIcon: Icon(Icons.explore_rounded),
+            label: 'Kesfet',
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({
-    super.key,
-    required this.token,
-    required this.onLogout,
-  });
-
-  final String token;
-  final Future<void> Function() onLogout;
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final _api = AuthApi(baseUrl: apiBaseUrl);
-  bool _isLoading = true;
-  bool _saving = false;
-  String? _error;
-  UserProfile? _profile;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    try {
-      final profile = await _api.fetchProfile(accessToken: widget.token);
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _profile = profile;
-        _isLoading = false;
-      });
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _error = 'Hata: $error';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _onPrivacyChanged(bool value) async {
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-    try {
-      final profile = await _api.updatePrivacy(
-        accessToken: widget.token,
-        isPrivate: value,
-      );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _profile = profile;
-        _saving = false;
-      });
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _error = 'Hata: $error';
-        _saving = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tokenPreview = widget.token.length > 16
-        ? '${widget.token.substring(0, 16)}...'
-        : widget.token;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Archi Home')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Hosgeldin, ${_profile?.username ?? ''}'),
-                  const SizedBox(height: 8),
-                  Text('E-posta: ${_profile?.email ?? ''}'),
-                  const SizedBox(height: 8),
-                  Text('Session. Token: $tokenPreview'),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    title: const Text('Profil gizliligi (Private)'),
-                    subtitle: const Text('Acik: Herkes, Kapali: Sadece sen'),
-                    value: _profile?.isPrivate ?? false,
-                    onChanged: _saving ? null : _onPrivacyChanged,
-                  ),
-                  if (_saving)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: LinearProgressIndicator(),
-                    ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 8),
-                    SelectableText.rich(
-                      TextSpan(
-                        text: _error!,
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ],
-                  const Spacer(),
-                  FilledButton(
-                    onPressed: widget.onLogout,
-                    child: const Text('Cikis Yap'),
-                  ),
-                ],
-              ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline_rounded),
+            activeIcon: Icon(Icons.person_rounded),
+            label: 'Profil',
+          ),
+        ],
       ),
     );
   }
