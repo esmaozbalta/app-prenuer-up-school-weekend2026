@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Archi.Api.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d479c51d5aa02cad2f845e282f047b2f0cdc2aad")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5908e6dae4a83324363bf4d27c0c1ad94aee4a46")]
 [assembly: System.Reflection.AssemblyProductAttribute("Archi.Api.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Archi.Api.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

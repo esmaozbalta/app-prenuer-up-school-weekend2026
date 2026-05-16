@@ -15,13 +15,17 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
+
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                // Do not override Jwt:* here: Program reads SigningKey at startup; mismatched
-                // in-memory values vs appsettings can sign tokens with one key and validate with another.
-                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=dummy"
+                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=dummy",
+                ["ExternalApi:UseStubs"] = "true",
+                ["Jwt:SigningKey"] = "test-signing-key-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "Archi.Api",
+                ["Jwt:Audience"] = "Archi.Mobile"
             });
         });
 

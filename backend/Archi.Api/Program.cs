@@ -4,11 +4,16 @@ using System.Text;
 using Archi.Api.Contracts.Auth;
 using Archi.Api.Contracts.Common;
 using Archi.Api.Contracts.Profile;
+using Archi.Api.Contracts.Users;
 using Archi.Api.Data;
+using Archi.Api.DependencyInjection;
+using Archi.Api.Endpoints;
 using Archi.Api.Models;
 using Archi.Api.Security;
+using Archi.Api.Services.Cache;
 using BCrypt.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -17,12 +22,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+var databaseConnectionString = DatabaseConnection.Resolve(builder.Configuration);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
+        databaseConnectionString,
         npgsql => npgsql
             .EnableRetryOnFailure(5, TimeSpan.FromSeconds(5), null)
             .CommandTimeout(120)));
+
+builder.Services.AddArchiCache(builder.Configuration);
+builder.Services.AddArchiSearchServices(builder.Configuration);
+builder.Services.AddArchiArchiveServices();
+builder.Services.AddArchiFeedServices();
+builder.Services.AddArchiSyncServices(builder.Configuration);
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var signingKey = jwtSettings["SigningKey"] ??
@@ -66,6 +79,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+var parsedDatabase = new Npgsql.NpgsqlConnectionStringBuilder(databaseConnectionString);
+app.Logger.LogInformation(
+    "Database configured: Host={Host}, Port={Port}, Database={Database}, Username={Username}",
+    parsedDatabase.Host,
+    parsedDatabase.Port,
+    parsedDatabase.Database,
+    parsedDatabase.Username);
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -83,70 +104,8 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapPost("/api/v1/auth/register", async (
-    RegisterRequest request,
-    AppDbContext dbContext,
-    IConfiguration configuration,
-    HttpContext httpContext) =>
-{
-    var clientKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    if (RegisterAttemptGuard.IsLocked(clientKey))
-    {
-        return Results.StatusCode(StatusCodes.Status423Locked);
-    }
-
-    if (string.IsNullOrWhiteSpace(request.Email) ||
-        string.IsNullOrWhiteSpace(request.Username) ||
-        string.IsNullOrWhiteSpace(request.Password))
-    {
-        RegisterAttemptGuard.RegisterFailure(clientKey);
-        return Results.BadRequest(new ErrorResponse("Email, username and password are required."));
-    }
-
-    if (request.Password.Length < 8)
-    {
-        RegisterAttemptGuard.RegisterFailure(clientKey);
-        return Results.BadRequest(new ErrorResponse("Password must be at least 8 characters."));
-    }
-
-    var normalizedUsername = request.Username.Trim().ToLowerInvariant();
-    var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-
-    var userExists = await dbContext.Users.AnyAsync(user =>
-        user.NormalizedUsername == normalizedUsername ||
-        user.NormalizedEmail == normalizedEmail);
-
-    if (userExists)
-    {
-        RegisterAttemptGuard.RegisterFailure(clientKey);
-        return Results.Conflict(new ErrorResponse("Username or email already exists."));
-    }
-
-    var user = new User
-    {
-        Id = Guid.NewGuid(),
-        Email = request.Email.Trim(),
-        NormalizedEmail = normalizedEmail,
-        Username = request.Username.Trim(),
-        NormalizedUsername = normalizedUsername,
-        PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-        IsPrivate = false
-    };
-
-    dbContext.Users.Add(user);
-    await dbContext.SaveChangesAsync();
-    RegisterAttemptGuard.RegisterSuccess(clientKey);
-
-    var token = CreateJwtToken(user, configuration);
-    var response = new RegisterResponse(
-        user.Id,
-        user.Email,
-        user.Username,
-        user.IsPrivate,
-        token);
-
-    return Results.Created($"/api/v1/users/{user.Id}", response);
-});
+app.MapPost("/api/v1/auth/register", HandleRegisterAsync);
+app.MapPost("/api/v1/users", HandleRegisterAsync);
 
 app.MapPost("/api/v1/auth/login", async (
     LoginRequest request,
@@ -260,9 +219,278 @@ app.MapGet("/api/v1/users/{userId:guid}/profile", async (
     return Results.NotFound();
 });
 
-app.MapGet("/api/v1/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/api/v1/users/{userId:guid}", async (
+    Guid userId,
+    ClaimsPrincipal principal,
+    AppDbContext dbContext) =>
+{
+    var target = await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(user => user.Id == userId);
+    if (target is null)
+    {
+        return Results.NotFound();
+    }
+
+    var callerId = TryGetUserId(principal);
+    if (!target.IsPrivate)
+    {
+        var includeOauth = callerId == target.Id;
+        return Results.Ok(MapToUserResponse(target, includeOauth));
+    }
+
+    if (callerId == target.Id)
+    {
+        return Results.Ok(MapToUserResponse(target, includeOauthId: true));
+    }
+
+    return Results.NotFound();
+});
+
+app.MapGet("/api/v1/users", async (int? page, int? pageSize, AppDbContext dbContext) =>
+{
+    var resolvedPage = Math.Max(1, page ?? 1);
+    var resolvedSize = Math.Clamp(pageSize ?? 20, 1, 100);
+
+    var publicUsers = dbContext.Users.AsNoTracking().Where(user => !user.IsPrivate);
+    var totalCount = await publicUsers.CountAsync();
+    var items = await publicUsers
+        .OrderByDescending(user => user.CreatedAt)
+        .Skip((resolvedPage - 1) * resolvedSize)
+        .Take(resolvedSize)
+        .Select(user => new UserResponse(
+            user.Id,
+            user.Email,
+            user.Username,
+            user.IsPrivate,
+            user.IsVaultMember,
+            user.CreatedAt,
+            null))
+        .ToListAsync();
+
+    return Results.Ok(new UserListResponse(items, totalCount));
+});
+
+app.MapPut("/api/v1/users/{userId:guid}", async (
+    Guid userId,
+    UpdateUserRequest request,
+    ClaimsPrincipal principal,
+    AppDbContext dbContext) =>
+{
+    var callerId = TryGetUserId(principal);
+    if (callerId is null || callerId != userId)
+    {
+        return Results.Forbid();
+    }
+
+    var user = await dbContext.Users.FirstOrDefaultAsync(dbUser => dbUser.Id == userId);
+    if (user is null)
+    {
+        return Results.NotFound();
+    }
+
+    if (request.Username is not null)
+    {
+        var trimmedUsername = request.Username.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedUsername))
+        {
+            return Results.BadRequest(new ErrorResponse("Username cannot be empty."));
+        }
+
+        var normalizedUsername = trimmedUsername.ToLowerInvariant();
+        if (normalizedUsername != user.NormalizedUsername)
+        {
+            var usernameTaken = await dbContext.Users.AnyAsync(dbUser =>
+                dbUser.NormalizedUsername == normalizedUsername && dbUser.Id != userId);
+            if (usernameTaken)
+            {
+                return Results.Conflict(new ErrorResponse("Username already in use."));
+            }
+
+            user.Username = trimmedUsername;
+            user.NormalizedUsername = normalizedUsername;
+        }
+    }
+
+    if (request.Email is not null)
+    {
+        var trimmedEmail = request.Email.Trim();
+        var normalizedEmail = trimmedEmail.ToLowerInvariant();
+        if (normalizedEmail != user.NormalizedEmail)
+        {
+            if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+            {
+                return Results.BadRequest(new ErrorResponse("Current password is required to change email."));
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            {
+                return Results.BadRequest(new ErrorResponse("Current password is incorrect."));
+            }
+
+            var emailTaken = await dbContext.Users.AnyAsync(dbUser =>
+                dbUser.NormalizedEmail == normalizedEmail && dbUser.Id != userId);
+            if (emailTaken)
+            {
+                return Results.Conflict(new ErrorResponse("Email already in use."));
+            }
+
+            user.Email = trimmedEmail;
+            user.NormalizedEmail = normalizedEmail;
+        }
+    }
+
+    if (request.NewPassword is not null)
+    {
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+        {
+            return Results.BadRequest(new ErrorResponse("Current password is required to set a new password."));
+        }
+
+        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+        {
+            return Results.BadRequest(new ErrorResponse("Current password is incorrect."));
+        }
+
+        if (request.NewPassword.Length < 8)
+        {
+            return Results.BadRequest(new ErrorResponse("New password must be at least 8 characters."));
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+    }
+
+    await dbContext.SaveChangesAsync();
+    return Results.Ok(MapToUserResponse(user, includeOauthId: true));
+}).RequireAuthorization();
+
+app.MapDelete("/api/v1/users/{userId:guid}", async (
+    Guid userId,
+    [FromBody] DeleteUserRequest request,
+    ClaimsPrincipal principal,
+    AppDbContext dbContext) =>
+{
+    var callerId = TryGetUserId(principal);
+    if (callerId is null || callerId != userId)
+    {
+        return Results.Forbid();
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Password))
+    {
+        return Results.BadRequest(new ErrorResponse("Password is required."));
+    }
+
+    var user = await dbContext.Users.FirstOrDefaultAsync(dbUser => dbUser.Id == userId);
+    if (user is null)
+    {
+        return Results.NotFound();
+    }
+
+    if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+    {
+        return Results.BadRequest(new ErrorResponse("Password is incorrect."));
+    }
+
+    dbContext.Users.Remove(user);
+    await dbContext.SaveChangesAsync();
+    return Results.NoContent();
+}).RequireAuthorization();
+
+app.MapSearchEndpoints();
+app.MapArchiveEndpoints();
+app.MapFeedEndpoints();
+app.MapVibeEndpoints();
+app.MapSyncEndpoints();
+app.MapShareCardEndpoints();
+
+app.MapGet("/api/v1/health", async (ICacheService cacheService) =>
+{
+    var cacheHealthy = await cacheService.PingAsync();
+    return Results.Ok(new
+    {
+        status = "ok",
+        cache = new { provider = cacheService.ProviderName, healthy = cacheHealthy }
+    });
+});
 
 app.Run();
+
+static UserResponse MapToUserResponse(User user, bool includeOauthId) =>
+    new(
+        user.Id,
+        user.Email,
+        user.Username,
+        user.IsPrivate,
+        user.IsVaultMember,
+        user.CreatedAt,
+        includeOauthId ? user.OauthId : null);
+
+static async Task<IResult> HandleRegisterAsync(
+    RegisterRequest request,
+    AppDbContext dbContext,
+    IConfiguration configuration,
+    HttpContext httpContext)
+{
+    var clientKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    if (RegisterAttemptGuard.IsLocked(clientKey))
+    {
+        return Results.StatusCode(StatusCodes.Status423Locked);
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Email) ||
+        string.IsNullOrWhiteSpace(request.Username) ||
+        string.IsNullOrWhiteSpace(request.Password))
+    {
+        RegisterAttemptGuard.RegisterFailure(clientKey);
+        return Results.BadRequest(new ErrorResponse("Email, username and password are required."));
+    }
+
+    if (request.Password.Length < 8)
+    {
+        RegisterAttemptGuard.RegisterFailure(clientKey);
+        return Results.BadRequest(new ErrorResponse("Password must be at least 8 characters."));
+    }
+
+    var normalizedUsername = request.Username.Trim().ToLowerInvariant();
+    var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+    var userExists = await dbContext.Users.AnyAsync(user =>
+        user.NormalizedUsername == normalizedUsername ||
+        user.NormalizedEmail == normalizedEmail);
+
+    if (userExists)
+    {
+        RegisterAttemptGuard.RegisterFailure(clientKey);
+        return Results.Conflict(new ErrorResponse("Username or email already exists."));
+    }
+
+    var createdAt = DateTimeOffset.UtcNow;
+    var user = new User
+    {
+        Id = Guid.NewGuid(),
+        Email = request.Email.Trim(),
+        NormalizedEmail = normalizedEmail,
+        Username = request.Username.Trim(),
+        NormalizedUsername = normalizedUsername,
+        PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+        IsPrivate = false,
+        IsVaultMember = false,
+        CreatedAt = createdAt
+    };
+
+    dbContext.Users.Add(user);
+    await dbContext.SaveChangesAsync();
+    RegisterAttemptGuard.RegisterSuccess(clientKey);
+
+    var token = CreateJwtToken(user, configuration);
+    var response = new RegisterResponse(
+        user.Id,
+        user.Email,
+        user.Username,
+        user.IsPrivate,
+        token);
+
+    return Results.Created($"/api/v1/users/{user.Id}", response);
+}
 
 static Guid? TryGetUserId(ClaimsPrincipal principal)
 {

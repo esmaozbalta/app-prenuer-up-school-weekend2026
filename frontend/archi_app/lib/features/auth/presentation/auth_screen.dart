@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../services/auth_api.dart';
 import '../../../services/session_storage.dart';
-
-const apiBaseUrl = 'http://localhost:5161';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.onAuthenticated});
@@ -21,7 +20,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isLoading = false;
   String? _message;
 
-  final _api = AuthApi(baseUrl: apiBaseUrl);
+  final _api = AuthApi(baseUrl: AppConfig.apiBaseUrl);
   final _sessionStorage = SessionStorage();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -59,15 +58,34 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     try {
-      final token = _isLoginMode
-          ? await _api.login(email: email, password: password)
-          : await _api.register(
-              email: email,
-              username: username,
-              password: password,
-            );
-      await _sessionStorage.saveToken(token);
-      widget.onAuthenticated(token);
+      if (_isLoginMode) {
+        final token = await _api.login(email: email, password: password);
+        await _sessionStorage.saveToken(token);
+        if (!mounted) {
+          return;
+        }
+        widget.onAuthenticated(token);
+      } else {
+        await _api.register(
+          email: email,
+          username: username,
+          password: password,
+        );
+        if (!mounted) {
+          return;
+        }
+        await _sessionStorage.clearToken();
+        if (!mounted) {
+          return;
+        }
+        _showRegistrationSuccessSnackBar(context);
+        setState(() {
+          _isLoginMode = true;
+          _message = null;
+          _passwordController.clear();
+          _usernameController.clear();
+        });
+      }
     } catch (error) {
       if (!mounted) {
         return;
@@ -82,6 +100,36 @@ class _AuthScreenState extends State<AuthScreen> {
         });
       }
     }
+  }
+
+  void _showRegistrationSuccessSnackBar(BuildContext context) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) {
+      return;
+    }
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        elevation: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        backgroundColor: AppColors.surfaceElevated,
+        duration: const Duration(seconds: 4),
+        content: Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: AppColors.success, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Kayıt başarılı! Lütfen giriş yapın.',
+                style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override

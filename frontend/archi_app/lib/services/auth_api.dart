@@ -85,10 +85,14 @@ class AuthApi {
 
     if (response.statusCode == 201) {
       final map = jsonDecode(response.body) as Map<String, dynamic>;
-      return (map['accessToken'] as String?) ?? '';
+      return _requireAccessToken(map);
     }
 
-    throw Exception(_readErrorMessage(response, 'Registration failed'));
+    if (response.statusCode == 409) {
+      throw Exception(_readErrorMessage(response, 'Bu e-posta veya kullanici adi zaten kayitli.'));
+    }
+
+    throw Exception(_readErrorMessage(response, 'Kayit basarisiz'));
   }
 
   Future<String> login({
@@ -107,14 +111,24 @@ class AuthApi {
 
     if (response.statusCode == 200) {
       final map = jsonDecode(response.body) as Map<String, dynamic>;
-      return (map['accessToken'] as String?) ?? '';
+      return _requireAccessToken(map);
     }
 
     if (response.statusCode == 401) {
-      throw Exception('Email veya sifre hatali.');
+      throw Exception('E-posta veya sifre hatali.');
     }
 
-    throw Exception(_readErrorMessage(response, 'Login failed'));
+    throw Exception(_readErrorMessage(response, 'Giris basarisiz'));
+  }
+
+  /// .NET minimal API varsayilan camelCase: `accessToken`
+  static String _requireAccessToken(Map<String, dynamic> map) {
+    final raw = map['accessToken'];
+    final token = raw is String ? raw : raw?.toString();
+    if (token == null || token.isEmpty) {
+      throw Exception('Sunucudan gecerli bir oturum anahtari alinamadi.');
+    }
+    return token;
   }
 }
 
