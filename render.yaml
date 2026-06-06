@@ -1,0 +1,45 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploy: connect repo → New Blueprint → select this file
+services:
+  - type: web
+    name: archi-api
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__SigningKey
+        generateValue: true
+      - key: Jwt__Issuer
+        value: Archi.Api
+      - key: Jwt__Audience
+        value: Archi.Mobile
+      - key: Jwt__ExpiryMinutes
+        value: "120"
+      - key: ExternalApi__UseStubs
+        value: "false"
+      - key: Sync__UseStubs
+        value: "false"
+      - key: Cache__Redis__Enabled
+        value: "true"
+      - key: Cache__Redis__ConnectionString
+        sync: false
+      - key: Tmdb__ApiKey
+        sync: false
+      - key: GoogleBooks__ApiKey
+        sync: false
+      - key: Igdb__ClientId
+        sync: false
+      - key: Igdb__ClientSecret
+        sync: false
+      - key: Steam__ApiKey
+        sync: false
+      - key: OpenAi__ApiKey
+        sync: false

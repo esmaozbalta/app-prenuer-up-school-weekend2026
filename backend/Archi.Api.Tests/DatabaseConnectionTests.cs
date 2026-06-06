@@ -14,7 +14,8 @@ public sealed class DatabaseConnectionTests
 
         var resolved = DatabaseConnection.Resolve(configuration);
 
-        Assert.Contains("aws-0-eu-central-1.pooler.supabase.com", resolved);
+        // aws-0 yerine güncel olan aws-1 havuz adresi kontrol ediliyor
+        Assert.Contains("aws-1-eu-central-1.pooler.supabase.com", resolved);
         Assert.Contains("postgres.gpwwqjbpfgqodkyckrjy", resolved);
     }
 
@@ -35,7 +36,7 @@ public sealed class DatabaseConnectionTests
         try
         {
             var resolved = DatabaseConnection.Resolve(configuration);
-            Assert.Contains("aws-0-eu-central-1", resolved);
+            Assert.Contains("aws-1-eu-central-1", resolved);
             Assert.Contains("gpwwqjbpfgqodkyckrjy", resolved);
         }
         finally

@@ -289,17 +289,17 @@ class _ArchiveBentoCard extends StatelessWidget {
                 _BottomSheetActionTile(
                   icon: Icons.playlist_add_check_circle_outlined,
                   title: 'Listeme Ekle',
-                  subtitle: 'Okuyacagim / Izleyecegim',
+                  subtitle: 'Okuyacağım / İzleyecegim',
                 ),
                 _BottomSheetActionTile(
                   icon: Icons.timelapse_rounded,
-                  title: 'Su an Yapiyorum',
-                  subtitle: 'Okuyorum / Izliyorum',
+                  title: 'Şu an Yapıyorum',
+                  subtitle: 'Okuyorum / İzliyorum',
                 ),
                 _BottomSheetActionTile(
                   icon: Icons.inventory_2_outlined,
-                  title: 'Bitirdim & Arsivle',
-                  subtitle: 'Okuduklarim / Izlediklerim',
+                  title: 'Bitirdim & Arşivle',
+                  subtitle: 'Okuduklarım / İzlediklerim',
                 ),
               ],
             ),

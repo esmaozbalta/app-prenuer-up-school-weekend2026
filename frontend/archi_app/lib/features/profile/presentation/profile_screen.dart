@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // <-- Dinamik veriler için eklendi
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -18,10 +19,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _service = const ArchiveMockService();
   late Future<List<ArchiveItem>> _itemsFuture;
 
+  // <-- 1. Dinamik kullanıcı verilerini tutacak değişkenler
+  String _username = 'Yükleniyor...';
+  String _email = '';
+
   @override
   void initState() {
     super.initState();
     _itemsFuture = _service.fetchMatches();
+    _loadUserProfile(); // <-- 2. Sayfa açıldığında bilgileri çekecek fonksiyonu çağırıyoruz
+  }
+
+  // <-- 3. Cihaz hafızasından giriş yapan kullanıcının bilgilerini çeken fonksiyon
+  Future<void> _loadUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      // Login olurken verileri kaydettiğin key isimlerine göre ('username', 'email') verileri alıyoruz
+      _username = prefs.getString('username') ?? 'Kullanıcı'; 
+      _email = prefs.getString('email') ?? ''; 
+    });
   }
 
   @override
@@ -52,8 +68,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Esma', style: AppTextStyles.heading2),
-                          Text('@archi.curator', style: AppTextStyles.bodySmall),
+                          // <-- 4. Sabit "Esma" yazısı yerine dinamik _username değişkeni
+                          Text(_username, style: AppTextStyles.heading2),
+                          
+                          // <-- 5. Sabit alt başlık yerine dinamik _email (boş değilse gösterir)
+                          if (_email.isNotEmpty) 
+                            Text(_email, style: AppTextStyles.bodySmall),
                         ],
                       ),
                     ],
@@ -71,8 +91,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   unselectedLabelColor: AppColors.textMuted,
                   tabs: const [
                     Tab(text: 'Listem'),
-                    Tab(text: 'Su an ki Akis'),
-                    Tab(text: 'Arsivim'),
+                    Tab(text: 'Şu an ki Akış'),
+                    Tab(text: 'Arşivim'),
                   ],
                 ),
                 const SizedBox(height: 10),

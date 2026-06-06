@@ -1,0 +1,31 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
+      Jwt__Issuer: Archi.Api
+      Jwt__Audience: Archi.Mobile
+      Jwt__SigningKey: ${Jwt__SigningKey:-local-dev-signing-key-min-32-chars!!}
+      ExternalApi__UseStubs: "true"
+      Sync__UseStubs: "true"
+      Cache__Redis__Enabled: "true"
+      Cache__Redis__ConnectionString: redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy

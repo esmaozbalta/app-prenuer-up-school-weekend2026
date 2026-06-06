@@ -19,4 +19,10 @@ public sealed class ArchiveMetadata
     public string? Platform { get; set; }
 
     public string? Summary { get; set; }
+
+    /// <summary>AI discovery assistant — same role as <see cref="Summary"/>.</summary>
+    public string? Description { get; set; }
+
+    /// <summary>AI discovery assistant — same role as <see cref="CoverUrl"/>.</summary>
+    public string? ImageUrl { get; set; }
 }

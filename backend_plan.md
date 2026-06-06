@@ -315,11 +315,49 @@ Archi.Api/
 
 | # | İş | Durum |
 |---|-----|--------|
-| 5.1 | Load test (search, feed) — k6 / NBomber | ⬜ |
-| 5.2 | Docker + Render deploy | ⬜ |
-| 5.3 | Keep-alive ping (cold start) | ⬜ |
-| 5.4 | Swagger / Postman collection güncel | ⬜ |
-| 5.5 | Supabase prod migration stratejisi | ⬜ |
+| 5.1 | Load test (search, feed) — k6 / NBomber | ✅ |
+| 5.2 | Docker + Render deploy | ✅ |
+| 5.3 | Keep-alive ping (cold start) | ✅ |
+| 5.4 | Swagger / Postman collection güncel | ✅ |
+| 5.5 | Supabase prod migration stratejisi | ✅ |
+
+#### Sprint 5 — Teknik To-Do (işaretleyerek ilerleyin)
+
+**5.1 — Load test (search, feed)**
+
+- [x] `backend/load-tests/search-feed.js` — k6; search p95 &lt; 800 ms, feed p95 &lt; 300 ms
+- [x] `backend/load-tests/README.md` — local + staging çalıştırma
+- [ ] CI'da isteğe bağlı k6 job (staging URL secret ile) — backlog
+- [ ] NBomber alternatif projesi — backlog (k6 yeterli MVP)
+
+**5.2 — Docker + Render deploy**
+
+- [x] `backend/Dockerfile` — .NET 9, SkiaSharp Linux deps
+- [x] `backend/docker-compose.yml` — API + Redis local
+- [x] `render.yaml` — Blueprint, health check, env şablonu
+- [x] `backend/docs/deploy-render.md` — adım adım deploy
+- [x] `appsettings.Production.json` — secret yok; env'den okunur
+- [x] `.github/workflows/backend-ci.yml` — test + Docker build
+
+**5.3 — Keep-alive ping (cold start)**
+
+- [x] `.github/workflows/keep-alive.yml` — 10 dk'da bir `/api/v1/health`
+- [x] Repo secret `ARCHI_API_URL` dokümante (deploy-render.md)
+- [ ] Render deploy sonrası secret set + workflow doğrulama — operasyonel
+
+**5.4 — Swagger / Postman collection**
+
+- [x] Swagger `OpenApiInfo` başlık + açıklama (`Program.cs`)
+- [x] `backend/docs/postman/Archi-API.postman_collection.json` — tüm MVP endpoint'ler
+- [x] Login/Register test script → `accessToken` + `userId` collection variable
+
+**5.5 — Supabase prod migration stratejisi**
+
+- [x] `backend/docs/supabase-prod-migration.md` — checklist, apply, rollback
+- [x] Migration envanteri (users, archive, vibe)
+- [ ] İlk prod `dotnet ef database update` — deploy sırasında operasyonel
+
+**Kabul:** Docker image build olur; `dotnet test` yeşil; k6 threshold'ları warm API'de geçer; Postman collection import edilebilir; Render blueprint deploy edilebilir.
 
 ---
 
@@ -457,7 +495,7 @@ Bir story tamam sayılır:
 
 ### Hafta 6 (Sprint 5)
 
-- 
+- k6 load test (`backend/load-tests/`), Dockerfile + `render.yaml`, keep-alive workflow, Postman collection, prod migration dokümanı.
 
 ---
 

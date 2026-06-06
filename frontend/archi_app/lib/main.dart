@@ -4,6 +4,7 @@ import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/auth_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'features/discovery/presentation/ai_chat_fab.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'services/session_storage.dart';
 
@@ -91,6 +92,8 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_currentIndex],
+      floatingActionButton: const AiChatFab(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (value) {
@@ -106,7 +109,7 @@ class _AppShellState extends State<AppShell> {
           BottomNavigationBarItem(
             icon: Icon(Icons.explore_outlined),
             activeIcon: Icon(Icons.explore_rounded),
-            label: 'Kesfet',
+            label: 'Keşfet',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline_rounded),

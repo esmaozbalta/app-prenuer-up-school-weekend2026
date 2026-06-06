@@ -164,3 +164,14 @@ C:\Users\Esma\Desktop\Archi\backend\Archi.Api\obj\Debug\net9.0\Archi.Api.pdb
 C:\Users\Esma\Desktop\Archi\backend\Archi.Api\obj\Debug\net9.0\Archi.Api.genruntimeconfig.cache
 C:\Users\Esma\Desktop\Archi\backend\Archi.Api\obj\Debug\net9.0\ref\Archi.Api.dll
 C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\appsettings.Production.json
+C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\Json.More.dll
+C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\JsonPointer.Net.dll
+C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\JsonSchema.Net.dll
+C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\JsonSchema.Net.Generation.dll
+C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\Mscc.GenerativeAI.dll
+C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\System.Diagnostics.DiagnosticSource.dll
+C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\System.IO.Pipelines.dll
+C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\System.Text.Encodings.Web.dll
+C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\System.Text.Json.dll
+C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\runtimes\browser\lib\net8.0\System.Text.Encodings.Web.dll
+C:\Users\Esma\Desktop\Archi\backend\Archi.Api\bin\Debug\net9.0\runtimes\win\lib\net9.0\System.Text.Encodings.Web.dll

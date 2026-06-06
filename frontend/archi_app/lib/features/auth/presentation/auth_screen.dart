@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -58,9 +58,15 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     try {
-      if (_isLoginMode) {
+if (_isLoginMode) {
         final token = await _api.login(email: email, password: password);
         await _sessionStorage.saveToken(token);
+        
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('email', email);
+        final extractedUsername = email.split('@').first;
+        await prefs.setString('username', extractedUsername);
+
         if (!mounted) {
           return;
         }

@@ -1,0 +1,23 @@
+name: Keep-alive ping
+
+on:
+  schedule:
+    # Render free tier cold start ~15 min; ping every 10 min
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping Archi API health
+        env:
+          API_URL: ${{ secrets.ARCHI_API_URL }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "ARCHI_API_URL secret is not set — skipping (configure in repo Settings → Secrets)."
+            exit 0
+          fi
+          curl -fsS --max-time 30 "${API_URL%/}/api/v1/health" | tee health.json
+          grep -q '"status":"ok"' health.json || grep -q '"status": "ok"' health.json

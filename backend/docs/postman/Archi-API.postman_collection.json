@@ -1,0 +1,290 @@
+{
+  "info": {
+    "_postman_id": "archi-api-v1",
+    "name": "Archi API v1",
+    "description": "MVP backend — auth, search, archive, feed, sync, share card.\n\nSet `baseUrl` and run **Auth → Login** (or Register) to populate `token`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "itemId", "value": "" },
+    { "key": "jobId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  pm.collectionVariables.set('token', j.accessToken);",
+                  "  pm.collectionVariables.set('userId', j.userId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@archi.test\",\n  \"username\": \"demouser\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const j = pm.response.json();",
+                  "  pm.collectionVariables.set('token', j.accessToken);",
+                  "  pm.collectionVariables.set('userId', j.userId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@archi.test\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "GET profile",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/profile" }
+        },
+        {
+          "name": "PATCH privacy",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"isPrivate\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/profile/privacy"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/users?page=1&pageSize=20"
+          }
+        },
+        {
+          "name": "GET user by id",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/users/{{userId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "item": [
+        {
+          "name": "Omni search",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/search/omni?q=matrix",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "search", "omni"],
+              "query": [{ "key": "q", "value": "matrix" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Archive",
+      "item": [
+        {
+          "name": "Add to archive",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('itemId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalId\": \"603\",\n  \"category\": \"movie\",\n  \"title\": \"The Matrix\",\n  \"metadata\": { \"coverUrl\": \"https://example.com/matrix.jpg\", \"year\": 1999 },\n  \"status\": 2,\n  \"tags\": [\"mind-bending\", \"classic\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/archive/add"
+          }
+        },
+        {
+          "name": "List archive",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/archive/{{userId}}?limit=50"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feed",
+      "item": [
+        {
+          "name": "Global feed",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/feed/global?limit=20"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vibes",
+      "item": [
+        {
+          "name": "Add vibe tag",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tagName\": \"cozy\"\n}" },
+            "url": "{{baseUrl}}/api/v1/archive/{{itemId}}/vibes"
+          }
+        },
+        {
+          "name": "Top vibes",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/archive/{{itemId}}/vibes/top?limit=5"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sync",
+      "item": [
+        {
+          "name": "Steam sync",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "  pm.collectionVariables.set('jobId', pm.response.json().jobId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"steamProfileUrl\": \"https://steamcommunity.com/id/example\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/sync/steam"
+          }
+        },
+        {
+          "name": "Get sync job",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/sync/jobs/{{jobId}}" }
+        },
+        {
+          "name": "Retry sync job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/sync/jobs/{{jobId}}/retry"
+          }
+        },
+        {
+          "name": "Goodreads CSV import",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "" }]
+            },
+            "url": "{{baseUrl}}/api/v1/sync/goodreads"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Share card",
+      "item": [
+        {
+          "name": "GET share card PNG",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/share-card/{{itemId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

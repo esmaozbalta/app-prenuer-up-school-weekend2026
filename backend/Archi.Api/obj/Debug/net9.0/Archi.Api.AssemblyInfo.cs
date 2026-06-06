@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Archi.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5908e6dae4a83324363bf4d27c0c1ad94aee4a46")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+81d6cbee8ab22017c568e40231466fe913314a90")]
 [assembly: System.Reflection.AssemblyProductAttribute("Archi.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Archi.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

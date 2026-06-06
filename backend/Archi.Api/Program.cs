@@ -21,7 +21,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Archi API",
+        Version = "v1",
+        Description =
+            "MVP backend: auth, omni-search, archive, global feed, vibe tags, Steam/Goodreads sync, share cards. " +
+            "Postman collection: backend/docs/postman/Archi-API.postman_collection.json"
+    });
+});
 
 var databaseConnectionString = DatabaseConnection.Resolve(builder.Configuration);
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -36,6 +46,7 @@ builder.Services.AddArchiSearchServices(builder.Configuration);
 builder.Services.AddArchiArchiveServices();
 builder.Services.AddArchiFeedServices();
 builder.Services.AddArchiSyncServices(builder.Configuration);
+builder.Services.AddArchiAiServices(builder.Configuration);
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var signingKey = jwtSettings["SigningKey"] ??
@@ -401,6 +412,7 @@ app.MapFeedEndpoints();
 app.MapVibeEndpoints();
 app.MapSyncEndpoints();
 app.MapShareCardEndpoints();
+app.MapChatEndpoints();
 
 app.MapGet("/api/v1/health", async (ICacheService cacheService) =>
 {
