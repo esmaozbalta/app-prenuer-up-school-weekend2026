@@ -5,6 +5,7 @@ namespace Archi.Api.Tests;
 
 public sealed class OpenAiServiceTests
 {
+    [Ignore("TryParseSuggestion metodu kaldırıldı")]
     [Fact]
     public void TryParseSuggestion_parses_raw_json()
     {
