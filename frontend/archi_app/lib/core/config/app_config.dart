@@ -17,15 +17,6 @@ abstract final class AppConfig {
   }
 
   static String _defaultApiBaseUrl() {
-    if (kIsWeb) {
-      return 'http://localhost:5161';
-    }
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        // Android emülatör: makinedeki localhost → 10.0.2.2
-        return 'http://10.0.2.2:5161';
-      default:
-        return 'http://localhost:5161';
-    }
+    return 'https://archi-api.onrender.com';
   }
 }

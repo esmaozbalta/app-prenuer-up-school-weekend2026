@@ -37,7 +37,7 @@ class _SuggestionCardState extends State<SuggestionCard> {
   Future<void> _fetchRealPosterFromTmdb() async {
     if (widget.suggestion.archiveCategory == 'movie' || widget.suggestion.archiveCategory == 'series') {
       try {
-        final url = Uri.parse('http://localhost:5161/api/v1/search?query=${widget.suggestion.title}');
+        final url = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/search?query=${widget.suggestion.title}');
         final response = await http.get(url);
         
         if (response.statusCode == 200) {
@@ -75,7 +75,7 @@ class _SuggestionCardState extends State<SuggestionCard> {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('token') ?? '';
 
-        final url = Uri.parse('http://localhost:5161/api/v1/archive');
+        final url = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/archive');
         final response = await http.post(
           url,
           headers: {

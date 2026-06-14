@@ -99,7 +99,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
 
     try {
       if (searchQuery.isNotEmpty) {
-        final url = Uri.parse('http://localhost:5161/api/v1/search?query=$searchQuery');
+        final url = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/search?query=$searchQuery');
         final response = await http.get(url);
         if (response.statusCode == 200) {
           final List<dynamic> data = jsonDecode(response.body);
@@ -140,7 +140,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
         List<DiscoveryItem> combinedResults = [];
 
         for (var keyword in top3Keywords) {
-          final url = Uri.parse('http://localhost:5161/api/v1/search?query=$keyword');
+          final url = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/search?query=$keyword');
           final response = await http.get(url);
           
           if (response.statusCode == 200) {
@@ -431,7 +431,7 @@ class _ArchiveBentoCard extends StatelessWidget {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('token') ?? '';
 
-        final url = Uri.parse('http://localhost:5161/api/v1/archive');
+        final url = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/archive');
         final response = await http.post(
           url,
           headers: {

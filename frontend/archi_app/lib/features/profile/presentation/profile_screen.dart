@@ -88,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_isLoggedIn) {
       // --- BACKEND'DEN GERÇEK PROFİL BİLGİLERİNİ ÇEKİYORUZ ---
       try {
-        final url = Uri.parse('http://localhost:5161/api/v1/profile');
+        final url = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/profile');
         final response = await http.get(
           url,
           headers: {
@@ -133,7 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? ''; 
 
-      final url = Uri.parse('http://localhost:5161/api/v1/archive');
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/archive');
       final response = await http.get(
         url,
         headers: {
@@ -167,7 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('token') ?? '';
 
-        final url = Uri.parse('http://localhost:5161/api/v1/archive');
+        final url = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/archive');
         final response = await http.post(
           url,
           headers: {
