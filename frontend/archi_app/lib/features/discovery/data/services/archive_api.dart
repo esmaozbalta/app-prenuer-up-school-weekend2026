@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/ai_suggestion.dart';
+import 'package:flutter/foundation.dart';
 
 class ArchiveApi {
   ArchiveApi({required this.baseUrl});
@@ -13,15 +14,22 @@ class ArchiveApi {
     required String accessToken,
     required AiSuggestion suggestion,
   }) async {
-    final uri = Uri.parse('$baseUrl/api/v1/archive/add');
-    final externalId =
-        'ai-${suggestion.title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}-${DateTime.now().millisecondsSinceEpoch}';
+    final uri = Uri.parse('$baseUrl/api/v1/archive');
+    
+    // Rastgele değil, benzersiz bir ID oluşturuyoruz
+    final externalId = 'ai-${suggestion.title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}-${DateTime.now().millisecondsSinceEpoch}';
 
-    final metadata = <String, dynamic>{
+    final payload = {
+      'externalId': externalId,
+      'title': suggestion.title,
+      'category': suggestion.archiveCategory, // 'movie', 'book', 'game'
+      'imageUrl': suggestion.imageUrl,
+      'year': suggestion.parsedYear?.toString() ?? '',
       'description': suggestion.description,
-      'year': suggestion.parsedYear,
-      'imageUrl': suggestion.imageUrl.isNotEmpty ? suggestion.imageUrl : null,
-    }..removeWhere((_, value) => value == null);
+      'status': 0, // ÖNEMLİ: Backend'e 'Listem' yerine 0 gönderiyoruz!
+    };
+
+    debugPrint('--- GÖNDERİLEN JSON: $payload ---');
 
     final response = await http.post(
       uri,
@@ -29,38 +37,15 @@ class ArchiveApi {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $accessToken',
       },
-      body: jsonEncode({
-        'externalId': externalId,
-        'category': suggestion.archiveCategory,
-        'title': suggestion.title,
-        'metadata': metadata,
-        'status': 0,
-        'tags': <String>[],
-      }),
+      body: jsonEncode(payload),
     );
 
-    if (response.statusCode == 201) {
+    debugPrint('--- SUNUCU CEVABI: ${response.statusCode} - ${response.body} ---');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
       return;
     }
 
-    if (response.statusCode == 401) {
-      throw Exception('Oturum suresi doldu.');
-    }
-
-    if (response.statusCode == 409) {
-      throw Exception('Bu icerik zaten arsivinde.');
-    }
-
-    final fallback = 'Arsive eklenemedi (HTTP ${response.statusCode}).';
-    if (response.body.trim().startsWith('{')) {
-      try {
-        final error = jsonDecode(response.body) as Map<String, dynamic>;
-        throw Exception((error['message'] as String?) ?? fallback);
-      } catch (_) {
-        throw Exception(fallback);
-      }
-    }
-
-    throw Exception(fallback);
+    throw Exception('Hata: ${response.statusCode} - ${response.body}');
   }
 }

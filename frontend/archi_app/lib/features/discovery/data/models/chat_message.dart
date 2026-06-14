@@ -7,13 +7,13 @@ class ChatMessage {
     required this.id,
     required this.kind,
     this.text,
-    this.suggestion,
+    this.suggestions, // <-- BURASI DÜZELTİLDİ (this.suggestion'dı)
   });
 
   final String id;
   final ChatMessageKind kind;
   final String? text;
-  final AiSuggestion? suggestion;
+  final List<AiSuggestion>? suggestions; // <-- BURASI LİSTE OLARAK GÜNCELLENDİ
 
   factory ChatMessage.user(String text) => ChatMessage(
     id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -27,10 +27,10 @@ class ChatMessage {
     text: text,
   );
 
-  factory ChatMessage.suggestion(AiSuggestion suggestion) => ChatMessage(
+  factory ChatMessage.suggestions(List<AiSuggestion> suggestions) => ChatMessage(
     id: DateTime.now().microsecondsSinceEpoch.toString(),
     kind: ChatMessageKind.suggestion,
-    suggestion: suggestion,
+    suggestions: suggestions,
   );
 
   factory ChatMessage.thinking() => ChatMessage(

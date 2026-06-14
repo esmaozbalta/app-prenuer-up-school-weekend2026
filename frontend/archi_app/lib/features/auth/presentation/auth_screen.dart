@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../services/auth_api.dart';
 import '../../../services/session_storage.dart';
+import '../../../features/auth/presentation/forgot_password_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.onAuthenticated});
@@ -40,15 +41,15 @@ class _AuthScreenState extends State<AuthScreen> {
     final username = _usernameController.text.trim();
 
     if (email.isEmpty || !email.contains('@')) {
-      setState(() => _message = 'Lutfen gecerli bir e-posta gir.');
+      setState(() => _message = 'Lütfen geçerli bir e-posta gir.');
       return;
     }
     if (password.length < 8) {
-      setState(() => _message = 'Sifre en az 8 karakter olmali.');
+      setState(() => _message = 'Şifre en az 8 karakter olmalı.');
       return;
     }
     if (!_isLoginMode && username.length < 3) {
-      setState(() => _message = 'Kullanici adi en az 3 karakter olmali.');
+      setState(() => _message = 'Kullanıcı adı en az 3 karakter olmalı.');
       return;
     }
 
@@ -57,21 +58,29 @@ class _AuthScreenState extends State<AuthScreen> {
       _message = null;
     });
 
-    try {
-if (_isLoginMode) {
-        final token = await _api.login(email: email, password: password);
-        await _sessionStorage.saveToken(token);
-        
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('email', email);
-        final extractedUsername = email.split('@').first;
-        await prefs.setString('username', extractedUsername);
+      try {
+        if (_isLoginMode) {
+          // API'den dönen cevabı doğrudan bir değişkene alıyoruz (Map değil, direkt String bekliyoruz)
+          final dynamic loginResponse = await _api.login(email: email, password: password);
+          
+          // Eğer loginResponse'un kendisi direkt token ise:
+          final String token = loginResponse.toString(); 
+          
+          // Eğer veritabanınızda Username'i ayrıca tutuyorsanız ve API bunu dönmüyorsa,
+          // mecburen email'in başını kullanmaya devam etmelisiniz veya 
+          // AuthApi'nizi tüm kullanıcı bilgilerini dönecek şekilde güncellemelisiniz.
+          final String username = email.split('@').first; 
 
-        if (!mounted) {
-          return;
-        }
-        widget.onAuthenticated(token);
-      } else {
+          await _sessionStorage.saveToken(token);
+          
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', token);
+          await prefs.setString('email', email);
+          await prefs.setString('Username', username); 
+          
+          if (!mounted) return;
+          widget.onAuthenticated(token);
+        } else {
         await _api.register(
           email: email,
           username: username,
@@ -261,7 +270,7 @@ class _AuthFormCard extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (!isLoginMode) ...[
-          _AuthField(controller: usernameController, hintText: 'Kullanici adi'),
+          _AuthField(controller: usernameController, hintText: 'Kullanıcı Adı'),
           const SizedBox(height: 12),
         ],
         _AuthField(
@@ -273,7 +282,13 @@ class _AuthFormCard extends StatelessWidget {
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
-            onPressed: isLoading ? null : () {},
+            onPressed: isLoading 
+              ? null 
+              : () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                  );
+                },
             child: Text(
               'Şifremi Unuttum',
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.primaryStrong),
@@ -308,7 +323,7 @@ class _AuthFormCard extends StatelessWidget {
         TextButton(
           onPressed: isLoading ? null : onToggleMode,
           child: Text(
-            isLoginMode ? 'Hesabın yok mu? Kayıt ol' : 'Zaten hesabın var mi? Giriş yap',
+            isLoginMode ? 'Hesabın yok mu? Kayıt ol' : 'Zaten hesabın var mı? Giriş yap',
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.primaryStrong),
           ),
         ),

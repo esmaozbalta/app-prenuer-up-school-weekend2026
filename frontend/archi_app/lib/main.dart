@@ -20,6 +20,11 @@ class ArchiApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       home: const SessionBootstrapScreen(),
+      // --- YENİ EKLENEN ROTA TANIMI ---
+      routes: {
+        // Çıkış yapıldığında oturum kontrolcüsüne yönlendirir, o da giriş sayfasına atar.
+        '/login': (context) => const SessionBootstrapScreen(), 
+      },
     );
   }
 }
@@ -82,16 +87,25 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _currentIndex = 0;
+  
+  // --- YENİ: Profil sayfasını tetiklemek için bir sayaç (anahtar) ekliyoruz ---
+  int _profileRefreshKey = 0; 
 
-  static const _pages = <Widget>[
-    DashboardScreen(),
-    ProfileScreen(),
-  ];
+  // Not: "static const _pages = ..." kısmını sildik çünkü sayfamız artık dinamik!
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          const DashboardScreen(), // Keşfet sayfası her zaman sabit kalır (veri harcamaz)
+          
+          // Profil sayfasına "ValueKey" veriyoruz. 
+          // Bu anahtar (sayı) her değiştiğinde, Flutter sadece bu sayfayı baştan çizer!
+          ProfileScreen(key: ValueKey(_profileRefreshKey)), 
+        ],
+      ),
       floatingActionButton: const AiChatFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: BottomNavigationBar(
@@ -99,6 +113,11 @@ class _AppShellState extends State<AppShell> {
         onTap: (value) {
           setState(() {
             _currentIndex = value;
+            
+            // --- YENİ: Eğer Profil sekmesine (1. indeks) tıklandıysa anahtarı değiştir ---
+            if (value == 1) {
+              _profileRefreshKey++; // Sayı artınca ProfileScreen kendini yeniler!
+            }
           });
         },
         backgroundColor: AppColors.surfaceElevated,

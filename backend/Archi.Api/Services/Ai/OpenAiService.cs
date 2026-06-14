@@ -13,10 +13,11 @@ public sealed partial class OpenAiService(
     IOptions<OpenAiOptions> options,
     ILogger<OpenAiService> logger) : IAiService
 {
-    private const string SystemPrompt =
-        "You are the Archi assistant. Suggest a movie, TV show, game, or book based on the user's input. " +
-        "You must respond ONLY with a raw JSON object in this exact format: " +
-        "{\"title\": \"...\", \"category\": \"...\", \"description\": \"...\", \"year\": \"...\", \"imageUrl\": \"...\"}";
+private const string SystemPrompt =
+        "You are the Archi assistant. Suggest 3 DIFFERENT movies, TV shows, games, or books based on the user's input. " +
+        "CRITICAL RULE: You MUST respond ENTIRELY in Turkish language. The title, category, and especially the description MUST be written in perfect, natural Turkish. " +
+        "You must respond ONLY with a raw JSON array containing exactly 3 objects in this exact format: " +
+        "[{\"title\": \"...\", \"category\": \"...\", \"description\": \"...\", \"year\": \"...\", \"imageUrl\": \"...\"}, {...}, {...}]";
 
     private const string GracefulMessage =
         "Asistan şu an kısa bir mola veriyor. Lütfen birazdan tekrar dene.";
@@ -88,9 +89,9 @@ public sealed partial class OpenAiService(
                 return ChatResponse.FromMessage(GracefulMessage);
             }
 
-            var suggestion = TryParseSuggestion(content);
-            return suggestion is not null
-                ? ChatResponse.FromSuggestion(suggestion)
+            var suggestions = TryParseSuggestions(content);
+            return suggestions is not null && suggestions.Count > 0
+                ? ChatResponse.FromSuggestions(suggestions)
                 : ChatResponse.FromMessage(GracefulMessage);
         }
         catch (Exception ex)
@@ -100,43 +101,34 @@ public sealed partial class OpenAiService(
         }
     }
 
-    public static AiSuggestionDto? TryParseSuggestion(string rawContent)
+    public static List<AiSuggestionDto>? TryParseSuggestions(string rawContent)
     {
-        var json = ExtractJsonObject(rawContent);
-        if (json is null)
-        {
-            return null;
-        }
+        var json = ExtractJsonArray(rawContent);
+        if (json is null) return null;
 
         try
         {
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
-
-            var title = ReadString(root, "title");
-            var category = ReadString(root, "category");
-            var description = ReadString(root, "description");
-            var year = ReadString(root, "year");
-            var imageUrl = ReadString(root, "imageUrl");
-
-            if (string.IsNullOrWhiteSpace(title) ||
-                string.IsNullOrWhiteSpace(category) ||
-                string.IsNullOrWhiteSpace(description))
-            {
-                return null;
-            }
-
-            return new AiSuggestionDto(
-                title.Trim(),
-                category.Trim(),
-                description.Trim(),
-                year?.Trim() ?? string.Empty,
-                imageUrl?.Trim() ?? string.Empty);
+            return JsonSerializer.Deserialize<List<AiSuggestionDto>>(json, JsonOptions);
         }
         catch (JsonException)
         {
             return null;
         }
+    }
+    private static string? ExtractJsonArray(string content)
+    {
+        var trimmed = content.Trim();
+        var fenced = JsonFenceRegex().Match(trimmed);
+        if (fenced.Success)
+        {
+            trimmed = fenced.Groups["json"].Value.Trim();
+        }
+
+        var start = trimmed.IndexOf('['); // '{' yerine '[' arıyoruz
+        var end = trimmed.LastIndexOf(']'); // '}' yerine ']' arıyoruz
+        if (start < 0 || end <= start) return null;
+
+        return trimmed[start..(end + 1)];
     }
 
     private static string? ReadString(JsonElement element, string propertyName) =>

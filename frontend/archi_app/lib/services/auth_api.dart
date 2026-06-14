@@ -89,10 +89,10 @@ class AuthApi {
     }
 
     if (response.statusCode == 409) {
-      throw Exception(_readErrorMessage(response, 'Bu e-posta veya kullanici adi zaten kayitli.'));
+      throw Exception(_readErrorMessage(response, 'Bu e-posta veya kullanıcı adı zaten kayıtlı.'));
     }
 
-    throw Exception(_readErrorMessage(response, 'Kayit basarisiz'));
+    throw Exception(_readErrorMessage(response, 'Kayıt başarısız'));
   }
 
   Future<String> login({
@@ -115,10 +115,38 @@ class AuthApi {
     }
 
     if (response.statusCode == 401) {
-      throw Exception('E-posta veya sifre hatali.');
+      throw Exception('E-posta veya şifre hatalı.');
     }
 
     throw Exception(_readErrorMessage(response, 'Giris basarisiz'));
+  }
+
+  // --- YENİ: DİREKT ŞİFRE SIFIRLAMA ---
+  Future<void> resetPassword({
+    required String email,
+    required String username,
+    required String newPassword,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/v1/auth/reset-password');
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'username': username,
+        'newPassword': newPassword,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return; // Şifre başarıyla değişti
+    }
+
+    if (response.statusCode == 404) {
+      throw Exception('E-posta ve Kullanıcı Adı eşleşmedi veya hesap bulunamadı.');
+    }
+
+    throw Exception(_readErrorMessage(response, 'Şifre sıfırlama başarısız oldu.'));
   }
 
   /// .NET minimal API varsayilan camelCase: `accessToken`

@@ -34,10 +34,12 @@ class ChatApi {
     final map = jsonDecode(response.body) as Map<String, dynamic>;
     final type = (map['type'] ?? '') as String;
 
-    if (type == 'suggestion' && map['suggestion'] is Map<String, dynamic>) {
-      return ChatApiResult.suggestion(
-        AiSuggestion.fromJson(map['suggestion'] as Map<String, dynamic>),
-      );
+    if (type == 'suggestion' && map['suggestions'] is List) {
+      final list = map['suggestions'] as List;
+      final suggestions = list
+          .map((e) => AiSuggestion.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return ChatApiResult.suggestions(suggestions);
     }
 
     return ChatApiResult.message(
@@ -49,16 +51,13 @@ class ChatApi {
 
 sealed class ChatApiResult {
   const ChatApiResult();
-
-  factory ChatApiResult.suggestion(AiSuggestion suggestion) =
-      ChatSuggestionResult;
-
+  factory ChatApiResult.suggestions(List<AiSuggestion> suggestions) = ChatSuggestionsResult;
   factory ChatApiResult.message(String message) = ChatTextResult;
 }
 
-final class ChatSuggestionResult extends ChatApiResult {
-  const ChatSuggestionResult(this.suggestion);
-  final AiSuggestion suggestion;
+final class ChatSuggestionsResult extends ChatApiResult {
+  const ChatSuggestionsResult(this.suggestions);
+  final List<AiSuggestion> suggestions;
 }
 
 final class ChatTextResult extends ChatApiResult {
