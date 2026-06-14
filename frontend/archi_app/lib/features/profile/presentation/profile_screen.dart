@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../services/session_storage.dart';
+import 'package:archi_app/core/config/app_config.dart';
 
 // --- GERÇEK VERİ MODELİMİZ ---
 class ArchiveItemModel {
